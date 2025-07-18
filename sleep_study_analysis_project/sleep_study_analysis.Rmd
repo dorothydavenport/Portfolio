@@ -1,0 +1,373 @@
+---
+title: "Sleep Study Analysis"
+author: "Dorothy Davenport"
+output:
+  html_document:
+    fig_width: 8
+    code_folding: hide
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=4,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+getwd()
+data = read.csv("Sleep_health_and_lifestyle_dataset.csv")
+
+library(plotly)
+library(tidyverse)
+library(sampling)
+
+#Adjusted BMI Category labeling for consistency. I would consider Normal Weight and Normal to be the same
+data = data %>% mutate(BMI.Category = str_replace(BMI.Category, "Normal Weight", "Normal"))
+#Created a new column to signify if a sleep disorder exists, rather than the specific disorder
+data = data %>% mutate(Disorder.Exists = if_else(Sleep.Disorder != "None", "Yes", "No"))
+
+```
+
+The following report looks at a sleep study dataset and inspects the column values, plots the correlation between multiple variables, and takes various random samples.
+
+## Review of dataset columns
+
+```{r echo=TRUE}
+
+glimpse(as_tibble(data))
+
+```
+
+## Frequency of gender in data
+
+Males and females are nearly equally represented in the dataset
+
+```{r echo=TRUE}
+
+genders = as.data.frame(table(data$Gender)); genders
+gender_chart = plot_ly(genders, labels = ~Var1, values = ~Freq, type = "pie")
+gender_chart %>% layout(title = "Proportion of Males and Females in Dataset")
+
+```
+## Frequency of occupation in data
+
+There are 11 occupations listed, with the majority of people working as nurses, doctors and engineers. The least represented occupations are managers, sales representatives and scientists/software engineers.
+
+```{r echo = TRUE}
+
+
+occupation = as.data.frame(table(data$Occupation)); occupation
+occ_chart = plot_ly(occupation, x = ~Var1, y = ~Freq, type = "bar")
+occ_chart %>% layout(title = "Frequencies of Occupation in Dataset",
+                     xaxis= list(title = "Occupation"))
+
+```
+
+## Distribution of ages in data
+
+The minimum age is 27, the median is 43, and the maximum is 59. There are no outliers in age. There are slightly more younger people than older represented, excluding the median.
+
+```{r echo = TRUE}
+
+f = fivenum(data$Age)
+names(f) = c("Min", "Q1", "Median","Q3", "Max"); f
+paste("The number of people younger than the median age:", sum(data$Age < f[3]))
+paste("The number of people older than the median age:", sum(data$Age > f[3]))
+age_chart = plot_ly(x = data$Age, type = "box")
+age_chart %>% layout(title = "Distribution of Ages",
+                       xaxis = list(title = "Age"))
+
+```
+
+## Comparison of BMI Category and Sleep Disorder
+
+Most people do not have a sleep disorder, and a similar number of people suffer from Insomnia and Sleep Apnea. It looks like there may be a correlation between sleep disorders and weight. Among the people with no sleep disorder, the majority also have a normal BMI, with about 5% of them being overweight. However, the majority of people with sleep disorders are also overweight, and some are obese. 
+
+```{r echo = TRUE}
+
+sleep_vs_BMI = table(data$Sleep.Disorder, data$BMI.Category); sleep_vs_BMI
+
+df = as.data.frame(sleep_vs_BMI)
+chart = plot_ly(df, x = ~Var1, y = ~Freq, color = ~Var2, type = "bar")
+chart %>% layout(title = "Comparison of People with Sleep Disorders Grouped by BMI Category",
+                 yaxis = list(title = "Number of People"), 
+                 xaxis = list(title = "Sleep Disorder"),
+                 barmode = "stack")
+```
+
+This can be seen more clearly when grouping sleep disorders as existing (Yes) or not existing (No)
+
+```{r echo = TRUE}
+
+disorder_vs_BMI = table(data$Disorder.Exists, data$BMI.Category)
+df2 = as.data.frame(disorder_vs_BMI)
+chart = plot_ly(df2, x = ~Var1, y = ~Freq, color = ~Var2, type = "bar")
+chart %>% layout(title = "Comparison of People with Sleep Disorders Grouped by BMI Category",
+                 yaxis = list(title = "Number of People"), 
+                 xaxis = list(title = "Sleep Disorder Exists"),
+                 barmode = "stack")
+```
+
+If the data is grouped by a sleep disorder existing and the average hours of sleep, we can see that BMI has a large effect on sleep. People with a normal BMI have the highest average sleep duration, even for those that also have a sleep disorder. People that are overweight or obese have lower sleep durations, with the lowest for people that have a sleep disorder and are overweight. 
+
+```{r echo = TRUE}
+
+bmi_and_dis_avgsleep = data |>
+  group_by(data$Disorder.Exists, data$BMI.Category) |>
+  summarise(avgsleep = mean(Sleep.Duration)); bmi_and_dis_avgsleep
+
+```
+
+## Comparison of Sleep Duration, Physical Activity and Gender
+
+Women get slightly more sleep than men, with an average of 7.23 hours a night compared to 7.04 
+
+```{r echo = TRUE}
+
+data |> group_by(data$Gender) |> summarize(avg_sleep = mean(Sleep.Duration))
+
+```
+
+There may be a correlation to higher physical activity levels and greater sleep duration. Countering this correlation are two groupings of women who got either the lowest amount of physical activity and highest sleep, or the highest physical activity level and lowest sleep
+
+```{r echo = TRUE}
+
+age_vs_sleep = plot_ly(data = data, 
+                       x = ~data$Physical.Activity.Level, 
+                       y = ~data$Sleep.Duration, 
+                       color = ~data$Gender,
+                       colors = c("#7769f3", "#54bf49"),
+                       type = "scatter",
+                       mode = "markers")
+age_vs_sleep %>% layout(title = "Comparison of Physical Activity Level and Sleep Duration",
+                        xaxis = list(title = "Physical Activity Level"),
+                        yaxis = list(title = "Sleep Duration"),
+                        legend = list(title = list(text = "Gender")))
+
+```
+
+If we replace gender with occupation, you can see that these two groupings are for women engineers (low activity high sleep) and women nurses (high activity low sleep)
+
+```{r echo = TRUE}
+
+age_vs_sleep2 = plot_ly(data = data, 
+                       x = ~data$Physical.Activity.Level, 
+                       y = ~data$Sleep.Duration, 
+                       color = ~data$Occupation,
+                       type = "scatter",
+                       mode = "markers")
+age_vs_sleep2 %>% layout(title = "Comparison of Physical Activity Level and Sleep Duration",
+                        xaxis = list(title = "Physical Activity Level"),
+                        yaxis = list(title = "Sleep Duration"),
+                        legend = list(title = list(text = "Occupation")))
+```
+
+## Distribution of Physcial Activity Level
+
+It is unclear what the distribution is for physical activity level based on the provided data. It could follow a right skewed exponential distribution if the full range of minutes of activity were present. Judging by this chart, we could assume that more people would have less than 30 minutes of activity than people with over 110 minutes of activity.
+
+```{r echo = TRUE}
+
+activity_dist = plot_ly(x = ~data$Physical.Activity.Level, 
+                        type = "histogram", 
+                        xbins = list(size = 15))
+activity_dist %>% layout(title = "Distribution of Physical Activity Level",
+                         xaxis = list(title = "Minutes of Activity", range = c(20,110)),
+                         yaxis = list(title = "Frequency", range = c(0,90)))
+
+```
+
+The boxplot of the distribution shows that the physical activity level is nearly perfect distributed between 30 and 90 minutes, with a Q1 of 45 minutes, a median of 60 minutes, and a Q3 of 75 minutes.
+
+```{r echo = TRUE}
+
+lvl = fivenum(data$Physical.Activity.Level)
+names(lvl) = c("Min", "Q1", "Median","Q3", "Max"); lvl
+activity_box_chart = plot_ly(x = data$Physical.Activity.Level, type = "box")
+activity_box_chart %>% layout(title = "Distribution of Physical Activity Level",
+                          xaxis = list(title = "Minutes of Activity"))
+```
+
+## Applicability of Central Limit Theorem on Sleep Duration
+
+The sleep duration ranges from 5.8 hours to 8.5 hours of sleep, with a mean of 7.13 hours and a standard deviation of 0.796
+
+```{r echo = TRUE}
+
+table(data$Sleep.Duration)
+paste("The mean of the population is", round(mean(data$Sleep.Duration),3))
+paste("The standard deviation of the population is", round(sd(data$Sleep.Duration),3))
+
+```
+
+Sleep duration does not have a clear distribution however, based on what we know about sleep, it 
+could be assumed that it will follow a normal distribution, with a drop off in hours of sleep less
+than 5.5 hours and more than 8.5 hours. 
+
+```{r echo = TRUE}
+
+sleep_dur = plot_ly(x = ~data$Sleep.Duration, 
+                        type = "histogram", 
+                        histnorm = "probability",
+                        xbins = list(size = .3))
+sleep_dur %>% layout(title = "Distribution of Sleep Duration",
+                         xaxis = list(title = "Hours of Sleep", range = c(5.5,9)),
+                         yaxis = list(title = "Frequency", range = c(0,.3)))
+
+```
+
+Drawing samples of 1000 people using the mean and standard deviation of the population, you can see that sample sizes of 25, 50 and 75 people have increasingly narrow ranges centered around the mean with increasingly higher frequency, which proves the Central Limit Theorem. 
+
+```{r echo = TRUE}
+
+set.seed(5919)
+num_samples = 1000
+size1 = 25
+size2 = 50
+size3 = 75
+
+xmean1 = numeric(num_samples)
+  for (i in 1:num_samples) {
+    xmean1[i] <- mean(sample(data$Sleep.Duration, size1, replace = FALSE))
+  }
+  
+plot1 = plot_ly(x = xmean1, type = "histogram", histnorm = "probability")
+plot1 %>% layout(title = "Sleep Duration Sample of 1000 of Size 25",
+                 xaxis = list(title = "Hours of Sleep", range = c(5.5, 9)),
+                 yaxis = list(title = "Frequency", range = c(0,.15)))
+
+xmean2 = numeric(num_samples)
+for (i in 1:num_samples) {
+  xmean2[i] <- mean(sample(data$Sleep.Duration, size2, replace = FALSE))
+}
+
+plot2 = plot_ly(x = xmean2, type = "histogram", histnorm = "probability")
+plot2 %>% layout(title = "Sleep Duration Sample of 1000 of Size 50",
+                 xaxis = list(title = "Hours of Sleep", range = c(5.5, 9)),
+                 yaxis = list(title = "Frequency", range = c(0,.15)))
+
+xmean3 = numeric(num_samples)
+for (i in 1:num_samples) {
+  xmean3[i] <- mean(sample(data$Sleep.Duration, size3, replace = FALSE))
+}
+
+plot3 = plot_ly(x = xmean3, type = "histogram", histnorm = "probability")
+plot3 %>% layout(title = "Sleep Duration Sample of 1000 of Size 75",
+                 xaxis = list(title = "Hours of Sleep", range = c(5.5, 9)),
+                 yaxis = list(title = "Frequency", range = c(0,.15)))
+
+```
+
+## Comparison of Sampling Methods and Effect on Mean Sleep Duration
+
+The original data has 374 rows and a mean of 7.13 hours of sleep
+```{r echo = TRUE}
+
+N = nrow(data)
+paste("The mean of the population is", round(mean(data$Sleep.Duration),3))
+
+```
+
+### Simple Random Sampling
+
+Using simple random sampling of 50 people with replacement gives the following frequencies and mean
+
+```{r echo = TRUE}
+
+set.seed(5919)
+n = 50
+a = srswr(n, N)
+rows1 = (1:N)[a!=0]
+simple_random = data[a != 0,]
+table(simple_random$Sleep.Duration)
+
+paste("The mean using simple random sampling is", round(mean(simple_random$Sleep.Duration),3))
+
+```
+
+### Systematic Sampling
+Using systematic sampling gives the following frequencies and mean
+
+```{r echo = TRUE}
+
+k = floor(N / n)
+paste("Sample size of:", k)
+set.seed(5919)
+b = sample(k,1)
+paste("First person selected in first group: ", b)
+print("All subsequent rows selected:")
+rows2 = seq(b, by = k, length = n); rows2
+systematic = data[seq(b, by = k, length = n),]
+table(systematic$Sleep.Duration)
+paste("The mean using systematic sampling is", round(mean(systematic$Sleep.Duration),3))
+
+```
+
+### Stratified Sampling by Gender
+
+Using stratified sampling by gender gives the following frequencies and mean. Females and males are nearly equally represented, so the sample sizes for each are the same.
+
+```{r echo = TRUE}
+
+mod_data = data.frame(Gender = data$Gender, Sleep = data$Sleep.Duration)
+set.seed(5919)
+print("Frequencies of gender in data:")
+gender_freq = table(mod_data$Gender); gender_freq
+print("Strata Sizes:")
+strata_sizes = round(n * gender_freq / sum(gender_freq)); strata_sizes
+stratified = sampling::strata(mod_data,
+                              stratanames = c("Gender"),
+                              size = strata_sizes, 
+                              method = "srswor", 
+                              description = TRUE)
+strat_data = sampling::getdata(mod_data, stratified); strat_data
+paste("The mean using stratified sampling by gender is", round(mean(strat_data$Sleep),3))
+
+```
+
+### Stratified Sampling by Sleep Disorder
+
+Considering what was learned earlier about the effect sleep disorders have on sleep duration, I've also used stratified sampling by sleep disorder. There are more people without sleep disorders so the strata for No is higher. 
+
+```{r echo = TRUE}
+
+mod_data2 = data.frame(Disorder = data$Disorder.Exists, Sleep = data$Sleep.Duration)
+set.seed(5919)
+print("Frequencies of sleep disorder existing in data:")
+disorder_freq = table(mod_data2$Disorder); disorder_freq
+print("Strata Sizes:")
+strata_sizes2 = round(n * disorder_freq / sum(disorder_freq)); strata_sizes2
+stratified2 = sampling::strata(mod_data2,
+                              stratanames = c("Disorder"),
+                              size = strata_sizes2, 
+                              method = "srswor", 
+                              description = TRUE)
+strat_data2 = sampling::getdata(mod_data2, stratified2); strat_data2
+paste("The mean using stratified sampling by sleep disorder is", round(mean(strat_data2$Sleep),3))
+
+```
+
+Comparing the mean sleep duration of these four sampling methods to the population average, systematic sampling was the lowest while stratified by gender was the highest. The sampling technique with a mean closest to the population would be simple random sampling with replacement, or stratified by sleep disorder as the next closest.
+
+```{r echo = TRUE}
+
+mean_comp = c(mean(data$Sleep.Duration), 
+              mean(simple_random$Sleep.Duration), 
+              mean(systematic$Sleep.Duration), 
+              mean(strat_data$Sleep),
+              mean(strat_data2$Sleep))
+names(mean_comp) = c("Population", "SimpleRandom", "Systematic", "Strata_Gender", "Strata_Disorder")
+mean_comp
+
+```
+
+## Conclusions
+
+We have seen in the data that this group of people get 5.8 hours to 8.5 hours of sleep, with a mean of 7.13 hours, and women get more sleep than men. There may be a correlation to higher physical activity levels and greater sleep duration. More data would be needed, as there were two groupings of women that did not fit this correlation. 
+
+We've seen that having a sleep disorder is correlated to higher BMI, and higher BMI is also correlated to lower sleep duration. People who get the most sleep have no sleep disorder and a normal BMI. 
+
+Despite sleep duration not having a clear distribution in this dataset, the Central Limit Theorem holds true when pulling three different samples of varying sizes from a random sample of 1000.
+
+When uses different sampling methods, the best method would be simple random sampling with replacement, or stratified by sleep disorder. 
