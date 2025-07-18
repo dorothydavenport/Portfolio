@@ -1,5 +1,5 @@
 # Portfolio
-Here is a ollection of projects I have worked on across several languages
+Here is a collection of projects I have worked on across several languages
 
 ## About Me
 I have over 10 years of experience in data analytics and business intelligence, and I have been working to improve my techinical skills in coding and quantitative analysis. 
