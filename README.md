@@ -6,7 +6,7 @@ I have over 10 years of experience in data analytics and business intelligence, 
 
 ## Projects
 
-**[Sleep Study Analysis](./sleep_study_analysis_project/)**
-Analysis of a sleep study dataset in with a RMD presentation of the final results.
-Languages/Packages: R (plotly, tidyverse, sampling)
+**[Sleep Study Analysis](./sleep_study_analysis_project/)**  
+Overview: Analysis of a sleep study dataset with a RMD presentation of the final results.  
+Languages/Packages: R (plotly, tidyverse, sampling)  
 Skills covered: comparison of categorical and quantitative variables, exploration of the Central Limit Theorem, sampling (simple random, systematic, stratified)
