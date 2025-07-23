@@ -12,11 +12,11 @@ Languages/Packages: R (plotly, tidyverse, sampling)
 Skills covered: comparison of categorical and quantitative variables, exploration of the Central Limit Theorem, sampling (simple random, systematic, stratified)
 
 **[Panty Inventory App](./pantry_inventory_project/)**  
-Overview: Program that allows the user to maintain an inventory of ingredients, and create new recipes
-Languages/Packages: Python
+Overview: Program that allows the user to maintain an inventory of ingredients, and create new recipes  
+Languages/Packages: Python  
 Skills covered: functions, iterations, use of different container types, private & public classes, reading & writing to a file, unit tests
 
 **[Math Guessing Game](./math_guessing_game/)**  
-Overview: Game that generates a math problem, and gives three attempts to the player to guess the solution
-Languages/Packages: C++
+Overview: Game that generates a math problem, and gives three attempts to the player to guess the solution  
+Languages/Packages: C++  
 Skills covered: nested loops, conditional statements
